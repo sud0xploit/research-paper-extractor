@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: research-document-extractor-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: research_extractor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

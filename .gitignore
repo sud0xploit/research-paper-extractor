@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Environment and secrets
+.env
+
+# Runtime data
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/output/*
+!backend/output/.gitkeep
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
