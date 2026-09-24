@@ -210,5 +210,3 @@ curl.exe -X POST http://localhost:8000/api/upload -F "files=@C:\path\to\paper.pd
 ```
 
 Supported extensions are `.pdf`, `.docx`, `.jpg`, `.jpeg`, and `.png`. Files are stored under `backend\uploads\<job_id>` with a generated filename prefix. Invalid files are reported independently and do not prevent other files in the same request from being stored.
-
-All 16 planned phases are complete. The backend suite passes with `25 passed`, the frontend production build succeeds, and local transformer inference has been verified.
