@@ -16,6 +16,9 @@ def extract_image_text(file_path: Path) -> dict:
         text = pytesseract.image_to_string(prepared_image).strip()
     return {
         "raw_text": text,
+        "page_texts": [text],
+        "layout_page_texts": [text],
+        "layout_blocks_by_page": [[{"x0": 0, "y0": 0, "text": text}]],
         "page_count": 1,
         "extraction_method": "tesseract",
         "needs_ocr": False,
@@ -44,6 +47,11 @@ def extract_scanned_pdf_text(file_path: Path) -> dict:
 
     return {
         "raw_text": "\n\n".join(page_text).strip(),
+        "page_texts": page_text,
+        "layout_page_texts": page_text,
+        "layout_blocks_by_page": [
+            [{"x0": 0, "y0": 0, "text": text}] for text in page_text
+        ],
         "page_count": len(page_text),
         "extraction_method": "tesseract-pdf",
         "needs_ocr": False,

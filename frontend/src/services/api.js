@@ -23,3 +23,8 @@ export function exportUrl(jobId = "", status = "") {
   const query = params.toString() ? `?${params.toString()}` : "";
   return `${api.defaults.baseURL}/api/export/excel${query}`;
 }
+
+export async function exportMetadata(format, records) {
+  const { data } = await api.post(`/api/export/metadata/${format}`, { records }, { responseType: "blob" });
+  return data;
+}

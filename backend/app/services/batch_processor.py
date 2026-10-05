@@ -20,8 +20,19 @@ def remember_batch_results(job_id: str, results: list[dict]) -> None:
 def process_file(file_path: Path) -> dict:
     """Process one document while keeping extraction details for downstream use."""
     extracted = extract_text(file_path)
-    metadata = extract_metadata(extracted.get("cleaned_text") or extracted.get("raw_text", ""))
-    classification = classify_publication(extracted.get("cleaned_text") or "", metadata)
+    metadata = extract_metadata(extracted)
+    publication_date = metadata.get("publication_date") or {}
+    classifier_metadata = {
+        "title": metadata.get("paper_title") or metadata.get("title"),
+        "authors": metadata.get("authors", []),
+        "publication_year": publication_date.get("year") or metadata.get("publication_year"),
+        "journal": metadata.get("journal_name") or metadata.get("journal"),
+        "conference": metadata.get("conference_name") or metadata.get("conference"),
+    }
+    classification = classify_publication(
+        extracted.get("cleaned_text") or extracted.get("raw_text") or "",
+        classifier_metadata,
+    )
     return {
         "filename": file_path.name,
         "status": "PROCESSED",

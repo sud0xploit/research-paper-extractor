@@ -1,5 +1,6 @@
 import os
 import re
+from html.parser import HTMLParser
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from urllib.parse import quote
@@ -50,6 +51,60 @@ def _crossref_year(message: dict) -> int | None:
     return None
 
 
+def _crossref_month(message: dict) -> int | None:
+    for field in ("published-print", "published-online", "published", "issued"):
+        parts = message.get(field, {}).get("date-parts", [])
+        if parts and parts[0] and len(parts[0]) > 1:
+            return parts[0][1]
+    return None
+
+
+class _PageTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        text = data.strip()
+        if text:
+            self.parts.append(text)
+
+
+def _issn_media(issn: str) -> str | None:
+    try:
+        response = requests.get(
+            f"https://portal.issn.org/resource/ISSN/{quote(issn, safe='')}",
+            headers={"User-Agent": "ResearchDocumentExtractor/0.1"},
+            timeout=8,
+        )
+        response.raise_for_status()
+        parser = _PageTextParser()
+        parser.feed(response.text)
+        page_text = " ".join(parser.parts).casefold()
+    except requests.RequestException:
+        return None
+    if re.search(r"medium\s*:?\s*print", page_text):
+        return "print"
+    if re.search(r"medium\s*:?\s*(?:online|electronic)", page_text):
+        return "electronic"
+    return None
+
+
+def _crossref_authors(message: dict) -> list[dict]:
+    authors = []
+    for author in message.get("author", []):
+        name = " ".join(part for part in (author.get("given"), author.get("family")) if part).strip()
+        if not name:
+            continue
+        affiliations = [
+            affiliation.get("name", "").strip()
+            for affiliation in author.get("affiliation", [])
+            if affiliation.get("name")
+        ]
+        authors.append({"name": name, "affiliations": affiliations})
+    return authors
+
+
 def verify_doi(doi: str | None, metadata: dict | None = None) -> dict:
     """Verify a DOI against Crossref metadata and report comparison evidence."""
     normalized_doi = normalize_doi(doi)
@@ -63,6 +118,12 @@ def verify_doi(doi: str | None, metadata: dict | None = None) -> dict:
         "author_similarity": None,
         "year_match": None,
         "container_match": None,
+        "crossref_month": None,
+        "crossref_issn": [],
+        "crossref_issn_formats": {},
+        "crossref_authors": [],
+        "crossref_container": None,
+        "crossref_type": None,
     }
     if not normalized_doi:
         result["remarks"] = "No DOI was extracted."
@@ -83,6 +144,8 @@ def verify_doi(doi: str | None, metadata: dict | None = None) -> dict:
 
     metadata = metadata or {}
     crossref_title = (message.get("title") or [None])[0]
+    crossref_issn = message.get("ISSN") or []
+    issn_formats = {issn: _issn_media(issn) for issn in crossref_issn}
     title_similarity = _title_similarity(metadata.get("title"), crossref_title)
     author_similarity = _author_similarity(metadata.get("authors", []), message.get("author", []))
     crossref_year = _crossref_year(message)
@@ -118,6 +181,12 @@ def verify_doi(doi: str | None, metadata: dict | None = None) -> dict:
             "container_match": container_match,
             "crossref_title": crossref_title,
             "crossref_year": crossref_year,
+            "crossref_month": _crossref_month(message),
+            "crossref_issn": crossref_issn,
+            "crossref_issn_formats": issn_formats,
+            "crossref_authors": _crossref_authors(message),
+            "crossref_container": crossref_container,
+            "crossref_type": message.get("type"),
         }
     )
     return result

@@ -8,7 +8,7 @@ from app.services import ocr_service
 from app.services.docx_extractor import extract_docx_text
 from app.services.file_processor import extract_text
 from app.services.pdf_extractor import extract_pdf_text
-from app.services.text_cleaner import clean_text
+from app.services.text_cleaner import add_cleaned_text, clean_text
 
 
 def test_pdf_extractor_reads_digital_text(tmp_path: Path) -> None:
@@ -85,3 +85,19 @@ def test_text_cleaner_normalizes_noise_and_repeated_headers() -> None:
     cleaned = clean_text(raw_text)
 
     assert cleaned == "Title with spacing"
+
+
+def test_layout_text_preserves_repeated_author_affiliations() -> None:
+    result = add_cleaned_text(
+        {
+            "raw_text": "Author One\nDepartment of Computing\nAuthor Two\nDepartment of Computing\n"
+            "Author Three\nDepartment of Computing",
+            "layout_page_texts": [
+                "Author One\nDepartment of Computing\nAuthor Two\nDepartment of Computing\n"
+                "Author Three\nDepartment of Computing"
+            ],
+        }
+    )
+
+    assert result["cleaned_text"].count("Department of Computing") == 0
+    assert result["cleaned_layout_page_texts"][0].count("Department of Computing") == 3
